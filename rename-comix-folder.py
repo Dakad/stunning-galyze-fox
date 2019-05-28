@@ -41,10 +41,21 @@ def run(comic_dir_path, saving_dir_path):
 
         new_comics_names = process_comic_dir(dir_path, num_serie)
         # print(comics, file_names, new_comics_names)
+
+        print("Parsed comic : title=%s num_serie=%d  #filenames=%d" %
+              (comic_name, num_serie, len(new_comics_names)))
         # Add the renamed comic filenames
         comics[comic_name] = file_names + new_comics_names
 
-        # TODO Rename the new list
+    # Now, begin the renaming of the comic old filename
+    for comic in comics.items():
+        comic_new_dir_name, comic_new_names = comic
+        for (comic_old_path, new_name) in comic_new_names:
+            # Create the path for the new comic files
+            comic_new_path = os.path.join(
+                saving_dir_path, comic_new_dir_name, new_name)
+            # print(comic_old_path, ' ~-_-~> ', comic_new_path)
+            os.renames(comic_old_path, comic_new_path)
 
 
 def parse_comic_name(comic_name):
