@@ -3,7 +3,7 @@ import sys
 
 
 def run(comic_dir_path, saving_dir_path):
-    # TODO Check if the comic and saving dir exists
+
     if not os.path.isdir(comic_dir_path):
         print("The provided comic dir '%s' do not exist" %
               comic_dir_path, flush=True)
@@ -13,8 +13,24 @@ def run(comic_dir_path, saving_dir_path):
         print("Creating saving dir : ", saving_dir_path, flush=True)
         os.makedirs(saving_dir_path, exist_ok=True)
 
-    # TODO Scan the comic dir
-    pass
+    def join_with_comic_dir_func(dir_name):
+        return os.path.isdir(os.path.join(comic_dir_path, dir_name))
+
+    dirs = sorted(filter(join_with_comic_dir_func, os.listdir(comic_dir_path)))
+
+    for comic_dir in dirs:
+        print(comic_dir)
+        # new_comics_names = scan_comic_dir(comic_dir_path)
+
+    # TODO Rename the new list
+
+
+def scan_comic_dir(comic_dir_path, num_serie=None):
+    with os.scandir(comic_dir_path) as comic_dir:
+        for entry in sorted(comic_dir, key=lambda e: e.name):
+            if entry.is_dir():
+                # TODO PArse the dir name to retrieve the num
+                scan_comic_dir(comic_dir)
 
 
 if __name__ == "__main__":
