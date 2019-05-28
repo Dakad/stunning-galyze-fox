@@ -1,6 +1,14 @@
 import os
 import sys
 
+import re
+
+
+regex_flags = re.MULTILINE | re.IGNORECASE
+regex = r"(?P<title>.+)(?:\s|#)(?P<num_serie>[0-9]{1,2}$)"
+
+pattern = re.compile(regex, regex_flags)
+
 
 def run(comic_dir_path, saving_dir_path):
 
@@ -19,10 +27,21 @@ def run(comic_dir_path, saving_dir_path):
     dirs = sorted(filter(join_with_comic_dir_func, os.listdir(comic_dir_path)))
 
     for comic_dir in dirs:
-        print(comic_dir)
+        new_comic_name, num_serie = parse_comic_name(comic_dir)
+        if num_serie != None:
+            print(new_comic_name, int(num_serie))
         # new_comics_names = scan_comic_dir(comic_dir_path)
+        pass
+        # TODO Rename the new list
 
-    # TODO Rename the new list
+
+def parse_comic_name(comic_name):
+    match = pattern.match(comic_name)
+    if match:
+        group = match.groupdict()
+        return (group['title'], group['num_serie'])
+    else:
+        return (comic_name, None)
 
 
 def scan_comic_dir(comic_dir_path, num_serie=None):
