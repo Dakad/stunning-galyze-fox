@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+from datetime import timedelta
 
 from PIL import Image
 
@@ -7,6 +9,12 @@ from PIL import Image
 ACCEPTED_EXTS = ['.jpg', '.jpeg', '.png'] + ['.!bt']
 
 verbose = False
+
+nb_dirs_corrupt = 0
+nb_files_corrupted = 0
+nb_dirs_valid = 0
+nb_dirs_total = 0
+start_time = time.monotonic()
 
 
 def print_err(*args, **kwargs):
@@ -18,10 +26,15 @@ def run(argv):
 
     scan_dir(input_dir)
 
-    print('Done')
+    print_summary()
 
 
 def scan_dir(full_dir_name, dir_name=''):
+    global nb_dirs_corrupt
+    global nb_files_corrupted
+    global nb_dirs_valid
+    global nb_dirs_total
+
     try:
         is_dir_corrupted = False
         corrupted_files = []
@@ -29,7 +42,7 @@ def scan_dir(full_dir_name, dir_name=''):
             for entry in sorted(it, key=lambda e: e.name):
                 entry_full_path = os.path.join(full_dir_name, entry.name)
                 if entry.is_dir():
-
+                    nb_dirs_total += 1
                     scan_dir(entry_full_path, entry.name+'/'+dir_name)
                 else:
                     if entry.is_file():
@@ -43,15 +56,20 @@ def scan_dir(full_dir_name, dir_name=''):
                                 if check_corrupt_image(entry_full_path, entry.name):
                                     if not is_dir_corrupted:
                                         is_dir_corrupted = True
+                                        nb_dirs_corrupt += 1
                                     corrupted_files.append(entry.name)
 
         if len(corrupted_files):
-            print_err('Bad directory: ', dir_name)
-            print_err(*corrupted_files, sep='\t')
-            print_err("")
+            nb_files_corrupted += len(corrupted_files)
+            if verbose:
+                print_err('Bad directory: ', dir_name)
+                print_err(*corrupted_files, sep='\t')
+                print_err("")
         else:
             if dir_name != (None or ''):
-                print('Valid dir : ', dir_name)
+                nb_dirs_valid += 1
+                if verbose:
+                    print('Valid dir : ', dir_name)
 
     except IOError as _:
         print_err('Bad director: ', full_dir_name)
@@ -73,10 +91,30 @@ def check_corrupt_image(full_file_name, filename):
         return True
 
 
+def print_summary():
+    end_time = time.monotonic()
+    elapsed = timedelta(seconds=end_time - start_time)
+
+    summary = """
+    ----------------------------------------------------------------------------
+    DONE in {} (Elapsed time in seconds : {} sec.)
+    ----------------------------------------------------------------------------
+    On {} dirs scanned
+    -----------------
+    {} dir valid
+    {} dir corrrupt
+    {} files corrupted
+    ----------------------------------------------------------------------------
+    """.format(elapsed, elapsed.total_seconds(), nb_dirs_total, nb_dirs_valid, nb_dirs_corrupt, nb_files_corrupted)
+
+    print(summary)
+    print_err(summary)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) == 1:
         print_err("Usage error : The input dir is required")
         sys.exit(1)
 
+    verbose = len(sys.argv) >= 3
     run(sys.argv)
-    verbose = len(sys.argv) == 3
