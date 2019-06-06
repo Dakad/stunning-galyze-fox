@@ -16,15 +16,16 @@ nb_dirs_valid = 0
 nb_dirs_total = 0
 start_time = time.monotonic()
 
+args = {}
+
 
 def print_err(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs, flush=True)
 
 
-def run(argv):
-    input_dir = argv[1]
+def run(**argv):
 
-    scan_dir(input_dir)
+    scan_dir(full_dir_name=argv['input_dir'])
 
     print_summary()
 
@@ -86,8 +87,8 @@ def check_corrupt_image(full_file_name, filename):
 
         return False
     except (IOError, Exception) as e:
-        if verbose:
-            print_err(filename, e)
+        # if verbose:
+        #     print_err(filename, e)
         return True
 
 
@@ -111,10 +112,34 @@ def print_summary():
     print_err(summary)
 
 
+def parse_command_line():
+    import argparse
+    global args
+
+    parser = argparse.ArgumentParser(
+        description='Simple script to find corrupt dir containing corrupted images')
+    parser.add_argument('input_dir', type=str, help='Input dir for scan')
+
+    parser.add_argument('-v', '--valid-dir', action='store', dest='valid_dir',
+                        help='Where to move the valid dirs')
+
+    parser.add_argument('-c', '--corrupt-dir', action='store', dest='corrupt_dir',
+                        help='Where to move the corrupt dir')
+
+    parser.add_argument('--verbose', action='store_false', default=False,
+                        dest='verbose',
+                        help='Print each dir and their corrupted images')
+
+    args = parser.parse_args()
+    return args
+
+
 if __name__ == "__main__":
+
     if len(sys.argv) == 1:
         print_err("Usage error : The input dir is required")
         sys.exit(1)
 
-    verbose = len(sys.argv) >= 3
-    run(sys.argv)
+    argv = parse_command_line()
+    print(argv)
+    # run(**args)
