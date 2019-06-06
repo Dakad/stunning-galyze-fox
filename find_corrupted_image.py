@@ -25,16 +25,27 @@ def print_err(*args, **kwargs):
 
 def run(**argv):
 
-    scan_dir(full_dir_name=argv['input_dir'])
+    if argv['corrupt_dir'] != None and not os.path.isdir(argv['corrupt_dir']):
+        print("Creating corrupt dir : ", argv['corrupt_dir'], flush=True)
+        os.makedirs(argv['corrupt_dir'], exist_ok=True)
 
-    print_summary()
+    if argv['valid_dir'] != None and not os.path.isdir(argv['valid_dir']):
+        print("Creating saving dir : ", argv['valid_dir'], flush=True)
+        os.makedirs(argv['valid_dir'], exist_ok=True)
+
+    scan_dir(argv['input_dir'], opts=argv)
+
+    print_summary(argv)
 
 
-def scan_dir(full_dir_name, dir_name=''):
+def scan_dir(full_dir_name, dir_name='', opts=None):
     global nb_dirs_corrupt
     global nb_files_corrupted
     global nb_dirs_valid
     global nb_dirs_total
+
+    if opts is None:
+        opts = {}
 
     try:
         is_dir_corrupted = False
@@ -44,7 +55,10 @@ def scan_dir(full_dir_name, dir_name=''):
                 entry_full_path = os.path.join(full_dir_name, entry.name)
                 if entry.is_dir():
                     nb_dirs_total += 1
-                    scan_dir(entry_full_path, entry.name+'/'+dir_name)
+
+                    parent_dir_name = os.path.join(dir_name, entry.name)
+
+                    scan_dir(entry_full_path, parent_dir_name, opts)
                 else:
                     if entry.is_file():
                         _, file_extension = os.path.splitext(entry.name)
@@ -62,15 +76,27 @@ def scan_dir(full_dir_name, dir_name=''):
 
         if len(corrupted_files):
             nb_files_corrupted += len(corrupted_files)
-            if verbose:
+
+            if opts.get('verbose'):
                 print_err('Bad directory: ', dir_name)
                 print_err(*corrupted_files, sep='\t')
                 print_err("")
+
+            if opts.get('corrupt_dir'):
+                for file_name in corrupted_files:
+                    old_path = os.path.join(full_dir_name, file_name)
+                    new_path = os.path.join(
+                        opts.get('corrupt_dir'), dir_name, file_name)
+                    os.renames(old_path, new_path)
         else:
             if dir_name != (None or ''):
                 nb_dirs_valid += 1
-                if verbose:
+                if opts.get('verbose'):
                     print('Valid dir : ', dir_name)
+
+                if opts.get('valid_dir'):
+                    new_dir = os.path.join(opts.get('valid_dir'), dir_name)
+                    os.renames(full_dir_name, new_dir)
 
     except IOError as _:
         print_err('Bad director: ', full_dir_name)
@@ -92,7 +118,7 @@ def check_corrupt_image(full_file_name, filename):
         return True
 
 
-def print_summary():
+def print_summary(opts):
     end_time = time.monotonic()
     elapsed = timedelta(seconds=end_time - start_time)
 
@@ -100,13 +126,13 @@ def print_summary():
     ----------------------------------------------------------------------------
     DONE in {} (Elapsed time in seconds : {} sec.)
     ----------------------------------------------------------------------------
-    On {} dirs scanned
+    On {} dirs scanned in {}
     -----------------
     {} dir valid
     {} dir corrrupt
     {} files corrupted
     ----------------------------------------------------------------------------
-    """.format(elapsed, elapsed.total_seconds(), nb_dirs_total, nb_dirs_valid, nb_dirs_corrupt, nb_files_corrupted)
+    """.format(elapsed, elapsed.total_seconds(), nb_dirs_total, opts['input_dir'], nb_dirs_valid, nb_dirs_corrupt, nb_files_corrupted)
 
     print(summary)
     print_err(summary)
@@ -126,7 +152,7 @@ def parse_command_line():
     parser.add_argument('-c', '--corrupt-dir', action='store', dest='corrupt_dir',
                         help='Where to move the corrupt dir')
 
-    parser.add_argument('--verbose', action='store_false', default=False,
+    parser.add_argument('--verbose', action='store_true',
                         dest='verbose',
                         help='Print each dir and their corrupted images')
 
@@ -140,6 +166,6 @@ if __name__ == "__main__":
         print_err("Usage error : The input dir is required")
         sys.exit(1)
 
-    argv = parse_command_line()
-    print(argv)
-    # run(**args)
+    argv = vars(parse_command_line())
+    # print(argv)
+    run(**argv)
